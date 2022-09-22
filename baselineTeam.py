@@ -47,12 +47,15 @@ def createTeam(firstIndex, secondIndex, isRed,
   any extra arguments, so you should make sure that the default
   behavior is what you want for the nightly contest.
   """
+  #Return list of agents, first will be offensive, 2nd will be defensive.
   return [eval(first)(firstIndex), eval(second)(secondIndex)]
 
 ##########
 # Agents #
 ##########
 
+#RV:Inherits from CaptureAgent class (captureAgent.py)
+#RV: This class is the parent of the 2 other class listed here.
 class ReflexCaptureAgent(CaptureAgent):
   """
   A base class for reflex agents that chooses score-maximizing actions
@@ -62,6 +65,7 @@ class ReflexCaptureAgent(CaptureAgent):
     self.start = gameState.getAgentPosition(self.index)
     CaptureAgent.registerInitialState(self, gameState)
 
+  #RV: Method does selects the highest weight, maybe execute action?
   def chooseAction(self, gameState):
     """
     Picks among the actions with the highest Q(s,a).
@@ -96,6 +100,7 @@ class ReflexCaptureAgent(CaptureAgent):
     Finds the next successor which is a grid position (location tuple).
     """
     successor = gameState.generateSuccessor(self.index, action)
+    #RV: .getAgentState() from capture.py (class GameState)?
     pos = successor.getAgentState(self.index).getPosition()
     if pos != nearestPoint(pos):
       # Only half a grid position was covered
