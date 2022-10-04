@@ -84,10 +84,7 @@ class ReflexCaptureAgent(CaptureAgent):
     foodLeft = len(self.getFood(gameState).asList())
 
 
-    #For the NotReallyDefensiveReflexAgent, it determines how much food it should bring back.
-    carry_limit = random.randint(2,3)
-
-    if foodLeft <= 2 or gameState.getAgentState(self.index).numCarrying > carry_limit:
+    if foodLeft <= 2 or gameState.getAgentState(self.index).numCarrying > 2:
       bestDist = 9999
       for action in actions:
         successor = self.getSuccessor(gameState, action)
@@ -175,8 +172,8 @@ class NotReallyDefensiveReflexAgent(ReflexCaptureAgent):
         features['onDefense'] = 0
 
     
-    #These is needed, or else the agent will stay around spawn.
-    if action == Directions.STOP: features['stop'] = 1
+    #These are needed, or else the agent will stay around spawn.
+    if action == Directions.STOP: features['stop'] = 100
     rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
     if action == rev: features['reverse'] = 1
 
@@ -190,16 +187,10 @@ class NotReallyDefensiveReflexAgent(ReflexCaptureAgent):
       features['distanceToFood'] = minDistance
       if len(enmy_ghost) > 0:
         features['distanceToFood'] = 0
-        
-        #Ideally, this causes the agent not run away if they have a capsule.
-        if self.getCapsules(gameState) != None:
-          features['onDefense'] = 1
     
 
     # Determine if the enemy is closer to you than they were last time
     # and you are in their territory.
-    # Note: This behavior isn't perfect, and can force Pacman to cower 
-    # in a corner.  I leave it up to you to improve this behavior.
     close_dist = 9999.0
     if self.index == 1 and gameState.getAgentState(self.index).isPacman:
       opp_fut_state = [successor.getAgentState(i) for i in self.getOpponents(successor)]
@@ -214,15 +205,16 @@ class NotReallyDefensiveReflexAgent(ReflexCaptureAgent):
     return features
 
   def getWeights(self, gameState, action):
-    return {'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'stop': -100, 'reverse': -2, 'successorScore': 100, 'distanceToFood': -1, 'fleeEnemy': -110.0}
+    return {'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'stop': -100, 'reverse': -2, 'successorScore': 100, 'distanceToFood': -1, 'fleeEnemy': -105.0}
   
 class DefensiveReflexAgent(ReflexCaptureAgent):
   """
-  A reflex agent that keeps its side Pacman-free. Again,
-  this is to give you an idea of what a defensive agent
-  could be like.  It is not the best or only way to make
-  such an agent.
+  A reflex agent that keeps its side Pacman-free.
   """
+
+
+  far_fd = None
+  count = 0
 
   def getFeatures(self, gameState, action):
     features = util.Counter()
@@ -247,7 +239,35 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
     rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
     if action == rev: features['reverse'] = 1
 
+    foodList = self.getFoodYouAreDefending(successor).asList()    
+    # Compute distance to the farthest food
+    #TODO: Comment
+    myPos = successor.getAgentState(self.index).getPosition()
+    
+    if myPos == DefensiveReflexAgent.far_fd:
+      if DefensiveReflexAgent.count % 2 == 1:
+        minDistance = 9999
+        for food in foodList:
+          if self.getMazeDistance(myPos, food) < minDistance:
+            DefensiveReflexAgent.far_fd = food
+            maxDistance = self.getMazeDistance(myPos, food)
+      else:
+        DefensiveReflexAgent.far_fd = None
+
+    if DefensiveReflexAgent.far_fd == None:
+      DefensiveReflexAgent.count += 1
+      if len(foodList) > 0: # This should always be True,  but better safe than sorry
+        #myPos = successor.getAgentState(self.index).getPosition()
+        maxDistance = 0
+        for food in foodList:
+          if self.getMazeDistance(myPos, food) > maxDistance:
+            DefensiveReflexAgent.far_fd = food
+            maxDistance = self.getMazeDistance(myPos, food)
+        features['distanceToFood'] = maxDistance
+    else:
+      features['distanceToFood'] = 101
+
     return features
 
   def getWeights(self, gameState, action):
-    return {'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -100, 'stop': -100, 'reverse': -2}
+    return {'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'stop': -100, 'reverse': -2, 'distanceToFood': -1 }
