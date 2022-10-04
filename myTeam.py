@@ -57,6 +57,8 @@ def createTeam(firstIndex, secondIndex, isRed,
 class ReflexCaptureAgent(CaptureAgent):
   """
   A base class for reflex agents that chooses score-maximizing actions.
+  Code below is copied to insure that the other classes that inherit
+  this class works.
   """
  
   def registerInitialState(self, gameState):
@@ -69,15 +71,9 @@ class ReflexCaptureAgent(CaptureAgent):
     """
     actions = gameState.getLegalActions(self.index)
 
-    # You can profile your evaluation time by uncommenting these lines
-    #start = time.time()
     values = [self.evaluate(gameState, a) for a in actions]
-    #if self.index == 1:
-      #print(values, file=sys.stderr)
-      # print(self.getPreviousObservation(), file=sys.stderr)
 
-    #print ('eval time for agent %d: %.4f' % (self.index, time.time() - start))
-
+    
     maxValue = max(values)
     bestActions = [a for a, v in zip(actions, values) if v == maxValue]
 
@@ -210,22 +206,60 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
   """
   A reflex agent that keeps its side Pacman-free.
   """
+  
+  #The 'memory' of the agent, to keep track/status of farthest food.
+  food1 = None
+
   def chooseAction(self, gameState):
     """
-    Picks among the actions with the highest Q(s,a).
+    Overrided to have a unique condition for the DefensiveReflexAgent 
+    (camp closest food to enemy).
     """
     actions = gameState.getLegalActions(self.index)
+    
 
+    #Sorting will help determine closest food to enemy.
+    foodLeft = self.getFoodYouAreDefending(gameState).asList()
+    foodLeft.sort()
+
+    #Overrides default defensiveReflexAgentBehavior if no enemy is spotted.
     enemies = [gameState.getAgentState(i) for i in self.getOpponents(gameState)]
     invaders = [a for a in enemies if a.isPacman and a.getPosition() != None]
-    foodLeft = self.getFoodYouAreDefending(gameState).asList()
-
     if(len(invaders) == 0):
+      
+      #If team is red, reverse list to get closest to enemy (closest to blue is a higher x val)
       if gameState.isOnRedTeam(self.index):
-        return self.defendOnRed(gameState)
-      else:
-        return self.defendOnBlue(gameState)
-
+        foodLeft.reverse()
+    
+      #Starting route (to farthest food)
+      if DefensiveReflexAgent.food1 == None:
+        DefensiveReflexAgent.food1 = foodLeft[0]
+      
+      #If food farthest food is eaten, travel to the closest food from the farthest food.
+      #after travelling to where the farthest food was.
+      elif not gameState.hasFood(DefensiveReflexAgent.food1[0], DefensiveReflexAgent.food1[1]):
+        myPos = gameState.getAgentPosition(self.index)
+        if myPos[0] == DefensiveReflexAgent.food1[0] and myPos[1] == DefensiveReflexAgent.food1[1]:
+          bestDist = 9999
+          new_food = None
+          for food in foodLeft:
+            dist = self.getMazeDistance(food,DefensiveReflexAgent.food1)
+            if dist < bestDist:
+              new_food = food
+              bestDist = dist
+        DefensiveReflexAgent.food1 = new_food
+      
+      #Finds moveable action to lead to food location.
+      bestDist = 9999
+      for action in actions:
+        successor = self.getSuccessor(gameState, action)
+        pos2 = successor.getAgentPosition(self.index)
+        dist = self.getMazeDistance(pos2,DefensiveReflexAgent.food1)
+        if dist < bestDist:
+          bestAction = action
+          bestDist = dist
+      return bestAction
+    
     else:
       values = [self.evaluate(gameState, a) for a in actions]
 
@@ -245,82 +279,7 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
 
     return random.choice(bestActions)
 
-  def defendOnRed(self, gameState):
-    actions = gameState.getLegalActions(self.index)
-    bestDist = 9999
-    way = 0
-    food1 = None
-    food2 = None
-    foodLeft = self.getFoodYouAreDefending(gameState).asList()
-    food1_x = 0
-    if gameState.getAgentPosition(self.index) == food1 or gameState.getAgentPosition(self.index) == food2:
-      way += 1
-
-    for food in foodLeft:
-      if food[0] >= food1_x:
-        food2 = food1
-        food1 = food
-        food1_x = food[0]
-      
-    if way % 2 == 0:
-      for action in actions:
-        successor = self.getSuccessor(gameState, action)
-        pos2 = successor.getAgentPosition(self.index)
-        dist = self.getMazeDistance(pos2, food1)
-        if dist < bestDist:
-          bestAction = action
-          bestDist = dist
-      return bestAction
-      
-    else:
-      for action in actions:
-        successor = self.getSuccessor(gameState, action)
-        pos2 = successor.getAgentPosition(self.index)
-        dist = self.getMazeDistance(pos2, food2)
-        if dist < bestDist:
-          bestAction = action
-          bestDist = dist
-      return bestAction
-
-  def defendOnBlue(self,gameState):
-    actions = gameState.getLegalActions(self.index)
-    bestDist = 9999
-    way = 0
-    food1 = None
-    food2 = None
-    foodLeft = self.getFoodYouAreDefending(gameState).asList()
-    food1_x = 999
-    if gameState.getAgentPosition(self.index) == food1 or gameState.getAgentPosition(self.index) == food2:
-      way += 1
-
-    for food in foodLeft:
-      if food[0] <= food1_x:
-        food2 = food1
-        food1 = food
-        food1_x = food[0]
-      
-    if way % 2 == 0:
-      for action in actions:
-        successor = self.getSuccessor(gameState, action)
-        pos2 = successor.getAgentPosition(self.index)
-        dist = self.getMazeDistance(pos2, food1)
-        if dist < bestDist:
-          bestAction = action
-          bestDist = dist
-      return bestAction
-      
-    else:
-      for action in actions:
-        successor = self.getSuccessor(gameState, action)
-        pos2 = successor.getAgentPosition(self.index)
-        dist = self.getMazeDistance(pos2, food2)
-        if dist < bestDist:
-          bestAction = action
-          bestDist = dist
-      return bestAction
-
-
-
+  
   def getFeatures(self, gameState, action):
     features = util.Counter()
     successor = self.getSuccessor(gameState, action)
