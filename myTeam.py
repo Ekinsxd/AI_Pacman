@@ -72,8 +72,8 @@ class ReflexCaptureAgent(CaptureAgent):
     # You can profile your evaluation time by uncommenting these lines
     #start = time.time()
     values = [self.evaluate(gameState, a) for a in actions]
-    if self.index == 1:
-      print(values, file=sys.stderr)
+    #if self.index == 1:
+      #print(values, file=sys.stderr)
       # print(self.getPreviousObservation(), file=sys.stderr)
 
     #print ('eval time for agent %d: %.4f' % (self.index, time.time() - start))
@@ -82,7 +82,6 @@ class ReflexCaptureAgent(CaptureAgent):
     bestActions = [a for a, v in zip(actions, values) if v == maxValue]
 
     foodLeft = len(self.getFood(gameState).asList())
-
 
     if foodLeft <= 2 or gameState.getAgentState(self.index).numCarrying > 2:
       bestDist = 9999
@@ -117,8 +116,8 @@ class ReflexCaptureAgent(CaptureAgent):
     features = self.getFeatures(gameState, action)
     weights = self.getWeights(gameState, action)
 
-    if self.index == 1:
-      print(str(features) + str(weights), file=sys.stderr)
+    #if self.index == 1:
+      #print(str(features) + str(weights), file=sys.stderr)
       # print(gameState.getAgentState(self.index)) # Print out a text representation of the world.
 
     return features * weights
@@ -211,10 +210,70 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
   """
   A reflex agent that keeps its side Pacman-free.
   """
+  def chooseAction(self, gameState):
+    """
+    Picks among the actions with the highest Q(s,a).
+    """
+    actions = gameState.getLegalActions(self.index)
 
+    enemies = [gameState.getAgentState(i) for i in self.getOpponents(gameState)]
+    invaders = [a for a in enemies if a.isPacman and a.getPosition() != None]
+    foodLeft = self.getFoodYouAreDefending(gameState).asList()
 
-  far_fd = None
-  count = 0
+    if(len(invaders) == 0):
+      bestDist = 9999
+      way = 0
+      food1 = None
+      food2 = None
+      food1_x = 0
+      if gameState.getAgentPosition(self.index) == food1 or gameState.getAgentPosition(self.index) == food2:
+        way += 1
+
+      for food in foodLeft:
+        if food[0] >= food1_x:
+          food2 = food1
+          food1 = food
+          food1_x = food[0]
+      
+      if way % 2 == 0:
+        for action in actions:
+          successor = self.getSuccessor(gameState, action)
+          pos2 = successor.getAgentPosition(self.index)
+          dist = self.getMazeDistance(pos2, food1)
+          if dist < bestDist:
+            bestAction = action
+            bestDist = dist
+        return bestAction
+      
+      else:
+        for action in actions:
+          successor = self.getSuccessor(gameState, action)
+          pos2 = successor.getAgentPosition(self.index)
+          dist = self.getMazeDistance(pos2, food2)
+          if dist < bestDist:
+            bestAction = action
+            bestDist = dist
+        return bestAction
+
+    else:
+      values = [self.evaluate(gameState, a) for a in actions]
+
+      maxValue = max(values)
+      bestActions = [a for a, v in zip(actions, values) if v == maxValue]
+
+      if len(foodLeft) <= 2 or gameState.getAgentState(self.index).numCarrying > 2:
+        bestDist = 9999
+        for action in actions:
+          successor = self.getSuccessor(gameState, action)
+          pos2 = successor.getAgentPosition(self.index)
+          dist = self.getMazeDistance(self.start,pos2)
+          if dist < bestDist:
+            bestAction = action
+            bestDist = dist
+        return bestAction
+
+    return random.choice(bestActions)
+
 
   def getFeatures(self, gameState, action):
     features = util.Counter()
@@ -239,35 +298,7 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
     rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
     if action == rev: features['reverse'] = 1
 
-    foodList = self.getFoodYouAreDefending(successor).asList()    
-    # Compute distance to the farthest food
-    #TODO: Comment
-    myPos = successor.getAgentState(self.index).getPosition()
-    
-    if myPos == DefensiveReflexAgent.far_fd:
-      if DefensiveReflexAgent.count % 2 == 1:
-        minDistance = 9999
-        for food in foodList:
-          if self.getMazeDistance(myPos, food) < minDistance:
-            DefensiveReflexAgent.far_fd = food
-            maxDistance = self.getMazeDistance(myPos, food)
-      else:
-        DefensiveReflexAgent.far_fd = None
-
-    if DefensiveReflexAgent.far_fd == None:
-      DefensiveReflexAgent.count += 1
-      if len(foodList) > 0: # This should always be True,  but better safe than sorry
-        #myPos = successor.getAgentState(self.index).getPosition()
-        maxDistance = 0
-        for food in foodList:
-          if self.getMazeDistance(myPos, food) > maxDistance:
-            DefensiveReflexAgent.far_fd = food
-            maxDistance = self.getMazeDistance(myPos, food)
-        features['distanceToFood'] = maxDistance
-    else:
-      features['distanceToFood'] = 101
-
     return features
 
   def getWeights(self, gameState, action):
-    return {'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'stop': -100, 'reverse': -2, 'distanceToFood': -1 }
+    return {'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'stop': -100, 'reverse': -2}
