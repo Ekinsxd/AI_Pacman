@@ -57,7 +57,7 @@ def createTeam(firstIndex, secondIndex, isRed,
 class ReflexCaptureAgent(CaptureAgent):
   """
   A base class for reflex agents that chooses score-maximizing actions.
-  Code below is copied to insure that the other classes that inherit
+  Code below is copied to ensure that the other classes that inherit
   this class works.
   """
  
@@ -73,7 +73,6 @@ class ReflexCaptureAgent(CaptureAgent):
 
     values = [self.evaluate(gameState, a) for a in actions]
 
-    
     maxValue = max(values)
     bestActions = [a for a, v in zip(actions, values) if v == maxValue]
 
@@ -260,6 +259,7 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
           bestDist = dist
       return bestAction
     
+    #Behavior of copied DefensiveReflexiveAgent.
     else:
       values = [self.evaluate(gameState, a) for a in actions]
 
@@ -281,6 +281,10 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
 
   
   def getFeatures(self, gameState, action):
+    """
+    Helps modify the priority of a decision based on
+    its current state.
+    """
     features = util.Counter()
     successor = self.getSuccessor(gameState, action)
 
@@ -306,4 +310,8 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
     return features
 
   def getWeights(self, gameState, action):
+    """
+    Default weight used to determine a move.
+    Higher value means a higher priority.
+    """
     return {'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'stop': -100, 'reverse': -2}
