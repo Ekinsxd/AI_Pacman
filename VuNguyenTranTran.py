@@ -78,7 +78,13 @@ class ReflexCaptureAgent(CaptureAgent):
 
     foodLeft = len(self.getFood(gameState).asList())
 
-    if foodLeft <= 2 or gameState.getAgentState(self.index).numCarrying > 2:
+    # Computes distance to ghost we can see
+    enemies = [gameState.getAgentState(i) for i in self.getOpponents(gameState)]
+    enmy_ghost = [a for a in enemies if not a.isPacman and a.getPosition() != None]
+    
+
+    #Retreat carrying 3 food piece, or when seeing ghost and is pacman, or food <= 2
+    if foodLeft <= 2 or gameState.getAgentState(self.index).numCarrying > 2 or (len(enmy_ghost) > 0 and gameState.getAgentState(self.index).isPacman):
       bestDist = 9999
       for action in actions:
         successor = self.getSuccessor(gameState, action)
